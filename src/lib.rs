@@ -1,4 +1,4 @@
-use std::{io::{BufReader, Write, Read, BufWriter}, fmt::Display};
+use std::{io::{Write, Read}, fmt::Display};
 
 use serde::{Serialize, de::DeserializeOwned};
 
@@ -50,9 +50,20 @@ pub trait BufReadExt: Read {
         let value = postcard::from_bytes(&bytes)?;
         Ok(value)
     }
+
+    fn read_serde_into_writer<W: Write>(&mut self, writer: &mut W) -> Result<(), Error> {
+        let mut len_bytes = [0; 8];
+        self.read_exact(&mut len_bytes)?;
+        writer.write_all(&len_bytes)?;
+        let len = usize::from_le_bytes(len_bytes);
+        let mut bytes = vec![0; len];
+        self.read_exact(&mut bytes)?;
+        writer.write_all(&bytes)?;
+        Ok(())
+    }
 }
 
-impl<R: Read> BufReadExt for BufReader<R> { }
+impl<R: Read> BufReadExt for R { }
 
 pub trait BufWriteExt: Write {
     /// Writes a value of type T to the writer.
@@ -65,4 +76,4 @@ pub trait BufWriteExt: Write {
     }
 }
 
-impl<W: Write> BufWriteExt for BufWriter<W> { }
+impl<W: Write> BufWriteExt for W { }
